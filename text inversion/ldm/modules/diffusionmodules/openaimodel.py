@@ -79,12 +79,12 @@ class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
     support it as an extra input.
     """
 
-    def forward(self, x, emb, context=None, attribute0=None,attribute1=None,attribute2=None):
+    def forward(self, x, emb, context=None):
         for layer in self:
             if isinstance(layer, TimestepBlock):
                 x = layer(x, emb)
             elif isinstance(layer, SpatialTransformer):
-                x = layer(x, context, attribute0,attribute1,attribute2)
+                x = layer(x, context)
             else:
                 x = layer(x)
         return x
@@ -709,7 +709,7 @@ class UNetModel(nn.Module):
         self.middle_block.apply(convert_module_to_f32)
         self.output_blocks.apply(convert_module_to_f32)
 
-    def forward(self, x, timesteps=None, context=None,attributes=None,s=None, y=None,**kwargs):
+    def forward(self, x, timesteps=None, context=None,s=None, y=None,**kwargs):
         """
         Apply the model to an input batch.
         :param x: an [N x C x ...] Tensor of inputs.
@@ -743,10 +743,7 @@ class UNetModel(nn.Module):
             # h0=module(h0, emb, attribute0)
             # h1=module(h1, emb, attribute1)
             # h2=module(h2, emb, attribute2)
-            if len(attributes)==3:
-                h = module(h, emb, context, attributes[0],attributes[1],attributes[2])
-            else:
-                h = module(h, emb, context)
+            h = module(h, emb, context)
 
             # w0 = torch.nn.CosineSimilarity()(h0, h)
             # w0 = 1 - torch.nn.ReLU()(w0)
@@ -767,10 +764,7 @@ class UNetModel(nn.Module):
             # h0s.append(h0)
             # h1s.append(h1)
             # h2s.append(h2)
-        if len(attributes)==3:
-            h = self.middle_block(h, emb, context, attributes[0],attributes[1],attributes[2])
-        else:
-            h = self.middle_block(h, emb, context)
+        h = self.middle_block(h, emb, context)
         # h0 = self.middle_block(h, emb, attribute0)
         # h1 = self.middle_block(h, emb, attribute1)
         # h2 = self.middle_block(h, emb, attribute2)
@@ -780,10 +774,7 @@ class UNetModel(nn.Module):
             # h2 = th.cat([h2, h2s.pop()], dim=1)
             h = th.cat([h, hs.pop()], dim=1)
 
-            if len(attributes)==3:
-                h = module(h, emb, context, attributes[0],attributes[1],attributes[2])
-            else:
-                h = module(h, emb, context)
+            h = module(h, emb, context)
             # h0=module(h0, emb, attribute0)
             # h1=module(h1, emb, attribute1)
             # h2=module(h2, emb, attribute2)
