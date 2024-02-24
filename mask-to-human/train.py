@@ -53,10 +53,7 @@ def sampling(args,conds,tot_cond,mask_background, shape,sampler,uc,masks=None,x0
     b = args.batch_size
     C, H, W = shape
     shape = (b, C, H, W)
-    #if init_img==None:
     img = torch.randn(shape, device=device)
-    #else:
-    #    img=init_img
     timesteps = make_ddim_timesteps(ddim_discr_method="uniform", num_ddim_timesteps=args.ddim_steps, num_ddpm_timesteps=sampler.model.num_timesteps,verbose=False)
 
     time_range = np.flip(timesteps)
@@ -70,8 +67,6 @@ def sampling(args,conds,tot_cond,mask_background, shape,sampler,uc,masks=None,x0
             ts = torch.full((b,), step, device=device, dtype=torch.long)
             s = torch.zeros([img.shape[0]]).to(device)
             new_img=x0*mask_background
-            #new_img=torch.zeros_like(img)
-
             if mask_background is not None:
                 img_orig = sampler.model.q_sample(x0, ts)  # TODO: deterministic forward pass?
                 img = img_orig * (mask_background) + (1-mask_background) * img
@@ -105,10 +100,7 @@ def sampling(args,conds,tot_cond,mask_background, shape,sampler,uc,masks=None,x0
                                            corrector_kwargs=None,
                                            unconditional_guidance_scale=args.scale,
                                            unconditional_conditioning=uc)
-            #img = x0 * mask_background*0.1+out*(1-mask_background*0.1)
-
             img = x0 * mask_background+out*(1-mask_background)
-            #img=out
     return img
 
 def get_f_mask(imgs,masks,model):
@@ -421,10 +413,6 @@ def test():
             for i in range(txts.__len__()):
                 mask=torch.where(masks_argmax==i+1,ones,zeros)
                 f_masks.append(mask)
-
-            #f_masks.append(mask_background)
-            #c_s.append(sampler.model.get_learned_conditioning('a girl in Times Square'))
-
 
             uc = sampler.model.get_learned_conditioning(args.batch_size * [""])
             shape = [args.C, args.H // args.f, args.W // args.f]
