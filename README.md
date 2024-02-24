@@ -30,4 +30,8 @@ Clothing Co Parsing数据集中共有59种不同的标签，范围从0到58不�
 
 需要修改\ldm\modules\encoders\modules.py和\site-packages\transformers\models\clip\modeling_clip.py中关于文本编码器的部分，添加embedding_manager，用于将占位符替换为对应的反演文本。
 
-同时需要将ddpm.py中的self.cond_stage_trainable=True。
+同时需要将ddpm.py中设置self.cond_stage_trainable=True，以便梯度能回传到编码器。
+
+之后使用inversion.py中的train函数进行训练，具体的参考图像读取依靠PersonalizedBase文件。
+
+经过反演文本训练后就能使用映射函数进行替换操作。参考inversion中的test()函数，同时需要将sampling采样噪声的前一半的迭代给跳过。
