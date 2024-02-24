@@ -729,91 +729,26 @@ class UNetModel(nn.Module):
             assert y.shape == (x.shape[0],)
             emb = emb + self.label_emb(y)
 
-        # attribute0,attribute1,attribute2=attributes[0],attributes[1],attributes[2]
-        # h0s=[]
-        # h1s=[]
-        # h2s=[]
         h = x.type(self.dtype)
-        # h0 = x.type(self.dtype)
-        # h1 = x.type(self.dtype)
-        # h2 = x.type(self.dtype)
-        # batch_size=x.shape[0]
-        # s=s.reshape([batch_size,1,1,1])
         for module in self.input_blocks:
-            # h0=module(h0, emb, attribute0)
-            # h1=module(h1, emb, attribute1)
-            # h2=module(h2, emb, attribute2)
-            h = module(h, emb, context, attributes[0],attributes[1],attributes[2])
-            # w0 = torch.nn.CosineSimilarity()(h0, h)
-            # w0 = 1 - torch.nn.ReLU()(w0)
-            # w0 = torch.unsqueeze(w0, 1)
-            # w1 = torch.nn.CosineSimilarity()(h1, h)
-            # w1 = 1 - torch.nn.ReLU()(w1)
-            # w1 = torch.unsqueeze(w1, 1)
-            # w2 = torch.nn.CosineSimilarity()(h2, h)
-            # w2 = 1 - torch.nn.ReLU()(w2)
-            # w2 = torch.unsqueeze(w2, 1)
-            # tmp_h = h
-            # h = h + s * w0 * h0 + s * w1 * h1 + s * w2 * h2
-            # h0 = h0 + s * w0 * tmp_h
-            # h1 = h1 + s * w1 * tmp_h
-            # h2 = h2 + s * w2 * tmp_h
-            #
+            if len(attributes)==3:
+                h = module(h, emb, context, attributes[0],attributes[1],attributes[2])
+            else:
+                h = module(h, emb, context)
             hs.append(h)
-            # h0s.append(h0)
-            # h1s.append(h1)
-            # h2s.append(h2)
 
-        h = self.middle_block(h, emb, context, attributes[0],attributes[1],attributes[2])
-        # h0 = self.middle_block(h, emb, attribute0)
-        # h1 = self.middle_block(h, emb, attribute1)
-        # h2 = self.middle_block(h, emb, attribute2)
+        if len(attributes)==3:
+            h = self.middle_block(h, emb, context, attributes[0],attributes[1],attributes[2])
+        else:
+            h = self.middle_block(h, emb, context)
         for module in self.output_blocks:
-            # h0 = th.cat([h0, h0s.pop()], dim=1)
-            # h1 = th.cat([h1, h1s.pop()], dim=1)
-            # h2 = th.cat([h2, h2s.pop()], dim=1)
             h = th.cat([h, hs.pop()], dim=1)
 
-            h = module(h, emb, context, attributes[0],attributes[1],attributes[2])
-            # h0=module(h0, emb, attribute0)
-            # h1=module(h1, emb, attribute1)
-            # h2=module(h2, emb, attribute2)
-            # w0=torch.nn.CosineSimilarity()(h0,h)
-            # w0=1-torch.nn.ReLU()(w0)
-            # w0=torch.unsqueeze(w0,1)
-            # w1=torch.nn.CosineSimilarity()(h1,h)
-            # w1=1-torch.nn.ReLU()(w1)
-            # w1=torch.unsqueeze(w1,1)
-            # w2=torch.nn.CosineSimilarity()(h2,h)
-            # w2=1-torch.nn.ReLU()(w2)
-            # w2=torch.unsqueeze(w2,1)
-            #
-            # tmp_h=h
-            #
-            # h=h+s*w0*h0+s*w1*h1+s*w2*h2
-            # h0=h0+s*w0*tmp_h
-            # h1=h1+s*w1*tmp_h
-            # h2=h2+s*w2*tmp_h
-        # import matplotlib.pyplot as plt
-        # plt.subplot(3, 3, 1)
-        # plt.imshow(h0[0][0].cpu().detach())
-        # plt.subplot(3, 3, 2)
-        # plt.imshow(h1[0][0].cpu().detach())
-        # plt.subplot(3, 3, 3)
-        # plt.imshow(h2[0][0].cpu().detach())
-        # plt.subplot(3, 3, 4)
-        # plt.imshow(h[0][0].cpu().detach())
-        # plt.subplot(3,3,7)
-        # w0=1-(w0-torch.min(w0))/(torch.max(w0)-torch.min(w0)+1e-8)
-        # plt.imshow(w0[0][0].cpu().detach())
-        # plt.subplot(3,3,8)
-        # w1 = 1-(w1 - torch.min(w1)) / (torch.max(w1) - torch.min(w1) + 1e-8)
-        # plt.imshow(w1[0][0].cpu().detach())
-        # plt.subplot(3,3,9)
-        # w2 = 1-(w2 - torch.min(w2)) / (torch.max(w2) - torch.min(w2) + 1e-8)
-        # plt.imshow(w2[0][0].cpu().detach())
-        # plt.show()
-
+            if len(attributes)==3:
+                h = module(h, emb, context, attributes[0],attributes[1],attributes[2])
+            else:
+                h = module(h, emb, context)
+            
         h = h.type(x.dtype)
 
         if self.predict_codebook_ids:
