@@ -66,49 +66,23 @@ def sampling(args,conds,tot_cond,mask_background, shape,sampler,uc,masks=None,x0
 
     mask_background=None
     for i, step in enumerate(iterator):
-        if i<args.ddim_steps//5:
-            index = total_steps - i - 1
-            ts = torch.full((b,), step, device=device, dtype=torch.long)
-            s = torch.zeros([img.shape[0]]).to(device)
-            #new_img=x0*mask_background
-            new_img=torch.zeros_like(img)
+        
+        index = total_steps - i - 1
+        ts = torch.full((b,), step, device=device, dtype=torch.long)
+        s = torch.zeros([img.shape[0]]).to(device)
 
-            if mask_background is not None:
-                img_orig = sampler.model.q_sample(x0, ts)  # TODO: deterministic forward pass?
-                img = img_orig * (mask_background) + (1-mask_background) * img
+        if mask_background is not None:
+            img_orig = sampler.model.q_sample(x0, ts)  # TODO: deterministic forward pass?
+            img = img_orig * (mask_background) + (1-mask_background) * img
 
-            for i in range(len(masks)):
-                mask=masks[i]
-                cond=conds[i]
-                out,_ = sampler.p_sample_ddim(img, cond,[], s, ts, index=index,
-                                      use_original_steps=False,
-                                      quantize_denoised=False, temperature=1.,
-                                      noise_dropout=0., score_corrector=None,
-                                      corrector_kwargs=None,
-                                      unconditional_guidance_scale=args.scale,
-                                      unconditional_conditioning=uc)
-
-                new_img +=mask* out
-            img=new_img
-        else:
-            index = total_steps - i - 1
-            ts = torch.full((b,), step, device=device, dtype=torch.long)
-            s = torch.zeros([img.shape[0]]).to(device)
-
-            if mask_background is not None:
-                img_orig = sampler.model.q_sample(x0, ts)  # TODO: deterministic forward pass?
-                img = img_orig * (mask_background) + (1-mask_background) * img
-
-            out, _ = sampler.p_sample_ddim(img, tot_cond, [], s, ts, index=index,
+        out, _ = sampler.p_sample_ddim(img, tot_cond, [], s, ts, index=index,
                                            use_original_steps=False,
                                            quantize_denoised=False, temperature=1.,
                                            noise_dropout=0., score_corrector=None,
                                            corrector_kwargs=None,
                                            unconditional_guidance_scale=args.scale,
                                            unconditional_conditioning=uc)
-            #img = x0 * mask_background*0.1+out*(1-mask_background*0.1)
-            #img = x0 * mask_background+out*(1-mask_background)
-            img=out
+        img=out
     return img
 
 def get_f_mask(imgs,masks,model):
@@ -389,22 +363,16 @@ def test():
             imgs, masks, txts, mask_background, tot_txt = data
             imgs = imgs.to(device)
             
-            f_masks=[]
-            c_s=[]
-            
-            f_masks.append(mask_background)
-            c_s.append(sampler.model.get_learned_conditioning('a girl in Times Square'))
-
-
             uc = sampler.model.get_learned_conditioning(args.batch_size * [""])
             shape = [args.C, args.H // args.f, args.W // args.f]
 
             tot_c=sampler.model.get_learned_conditioning('a girl in '+tot_txt[0]+' in Times Square')
-            samples_ddim=sampling(args,c_s,tot_c, mask_background,shape,sampler,uc,masks=f_masks,x0=encoder_background)
+            samples_ddim=sampling(args,None,tot_c, None,shape,sampler,uc,masks=None,x0=None)
 
             x_samples_ddim = sampler.model.decode_first_stage(samples_ddim)
             x_samples_ddim = torch.clip(x_samples_ddim, -1, 1)
             x_samples_ddim = x_samples_ddim.float()
+
 
             img=x_samples_ddim[0]
             img=torch.clip(img,-1,1)
