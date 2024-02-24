@@ -14,6 +14,8 @@ Clothing Co Parsing数据集中共有59种不同的标签，范围从0到58不�
 
 由于扩散模型本身就是面向的文本生成图像任务，因此只需要在CCP数据集上进行微调，模型就能很好的生成相应图像。
 
+将下载好的预训练模型放在text-to-human/models/ldm/stable-diffusion-v1/路径下，在text-to-human/路径下使用train.py中的train()函数进行训练预训练模型，之后再使用test()函数进行测试。
+
 # 掩码生成人像
 
 # 基于文本反演的人像图像生成
