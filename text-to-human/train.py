@@ -362,15 +362,7 @@ def test():
     config = OmegaConf.load(args.config_path)  # 加载参数
     config=config.model
     model=LatentDiffusion(**config.get("params", dict()))
-    #checkpoint={}
-    #with safe_open('./models/ldm/stable-diffusion-v1/chomni.safetensors',framework="pt",device='cuda') as f:
-    #    for k in f.keys():
-    #        checkpoint[k]=f.get_tensor(k)
-    #model.load_state_dict(checkpoint, strict=False)
-
-    # checkpoint = torch.load('./models/ldm/stable-diffusion-v1/v1-5-pruned.ckpt')['state_dict']
-    # model.load_state_dict(checkpoint,strict=False)
-
+    
     checkpoint = torch.load('./checkpoints/state_epoch_004.pth')['model']
     model.load_state_dict(checkpoint,strict=False)
     model.to(device)
@@ -396,32 +388,10 @@ def test():
         for step, data in enumerate(train_loader, 0):
             imgs, masks, txts, mask_background, tot_txt = data
             imgs = imgs.to(device)
-            imgs_background = imgs * mask_background.to(device)
-            mask_background=get_f_mask(fs_imgs,mask_background.to(device),sampler.model)
-            encoder_background = sampler.model.encode_first_stage(imgs_background)
-            encoder_background = sampler.model.get_first_stage_encoding(encoder_background).detach()
-
-            masks_argmax = mask_background
-
+            
             f_masks=[]
             c_s=[]
-            for i in range(txts.__len__()):
-                mask=masks[i]#[bt,1,512,512]
-                mask = mask.to(device)
-                mask=get_f_mask(fs_imgs,mask,sampler.model)
-                c_s.append(sampler.model.get_learned_conditioning([txts[i][0]]))
-                masks_argmax=torch.cat([masks_argmax,mask],dim=1)
-            masks_argmax=torch.nn.Softmax(dim=1)(masks_argmax)
-            masks_argmax=torch.argmax(masks_argmax,dim=1)
-            masks_argmax=torch.unsqueeze(masks_argmax,dim=0)
-            ones=torch.ones_like(mask_background)
-            zeros=torch.zeros_like(mask_background)
-            mask_background=torch.where(masks_argmax==0,ones,zeros)
-
-            for i in range(txts.__len__()):
-                mask=torch.where(masks_argmax==i+1,ones,zeros)
-                f_masks.append(mask)
-
+            
             f_masks.append(mask_background)
             c_s.append(sampler.model.get_learned_conditioning('a girl in Times Square'))
 
@@ -459,13 +429,13 @@ def train():
     config = config.model
     model=LatentDiffusion(**config.get("params", dict()))
 
-    sd = torch.load('./checkpoints/state_epoch_003.pth')['model']
-    model.load_state_dict(sd,strict=False)
-    del sd
+    #sd = torch.load('./checkpoints/state_epoch_003.pth')['model']
+    #model.load_state_dict(sd,strict=False)
+    #del sd
 
-    # checkpoint = torch.load('./models/ldm/stable-diffusion-v1/v1-5-pruned.ckpt')['state_dict']
-    # model.load_state_dict(checkpoint,strict=False)
-    # del checkpoint
+    checkpoint = torch.load('./models/ldm/stable-diffusion-v1/v1-5-pruned.ckpt')['state_dict']
+    model.load_state_dict(checkpoint,strict=False)
+    del checkpoint
 
     model.train()
     model.requires_grad_(True)
@@ -521,8 +491,7 @@ def train():
             txts=list(txts)
 
             loss_total = model.training_step({'caption':txts,'jpg':imgs,'masks':masks},step)#ddpm 344
-
-            # loss_total=train_one_step(args,imgs, masks, txts, mask_background, tot_txt,model,sampler)
+            
             accelerator.backward(loss_total)
             optimizer.step()
             optimizer.zero_grad(set_to_none=True)
