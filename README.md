@@ -25,3 +25,5 @@ Clothing Co Parsing数据集中共有59种不同的标签，范围从0到58不�
 # 基于文本反演的人像图像生成
 
 ![结果图](/fig17.png)
+
+首先使用文本反演学习参考图像的图像特征，我们再text inversion/train images路径中保存了一些测试用例。
