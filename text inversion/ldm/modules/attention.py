@@ -172,7 +172,7 @@ class CrossAttention(nn.Module):
         self.tmp=1
 
 
-    def forward(self, x, context=None, attribute0=None,attribute1=None,attribute2=None, mask=None):
+    def forward(self, x, context=None, mask=None):
         h = self.heads
 
         q = self.to_q(x)
@@ -213,12 +213,12 @@ class BasicTransformerBlock(nn.Module):
         self.norm3 = nn.LayerNorm(dim)
         self.checkpoint = checkpoint
 
-    def forward(self, x, context=None, attribute0=None,attribute1=None,attribute2=None):
-        return checkpoint(self._forward, (x, context,attribute0,attribute1,attribute2), self.parameters(), self.checkpoint)
+    def forward(self, x, context=None,):
+        return checkpoint(self._forward, (x, context,), self.parameters(), self.checkpoint)
 
-    def _forward(self, x, context=None, attribute0=None,attribute1=None,attribute2=None):
+    def _forward(self, x, context=None, ):
         x = self.attn1(self.norm1(x)) + x
-        x = self.attn2(self.norm2(x), context=context, attribute0=attribute0,attribute1=attribute1,attribute2=attribute2) + x
+        x = self.attn2(self.norm2(x), context=context, ) + x
         x = self.ff(self.norm3(x)) + x
         return x
 
@@ -255,7 +255,7 @@ class SpatialTransformer(nn.Module):
                                               stride=1,
                                               padding=0))
 
-    def forward(self, x, context=None, attribute0=None,attribute1=None,attribute2=None):
+    def forward(self, x, context=None,):
         # note: if no context is given, cross-attention defaults to self-attention
         b, c, h, w = x.shape
         x_in = x
@@ -263,7 +263,7 @@ class SpatialTransformer(nn.Module):
         x = self.proj_in(x)
         x = rearrange(x, 'b c h w -> b (h w) c')
         for block in self.transformer_blocks:
-            x = block(x, context=context, attribute0=attribute0,attribute1=attribute1,attribute2=attribute2)
+            x = block(x, context=context, )
         x = rearrange(x, 'b (h w) c -> b c h w', h=h, w=w)
         x = self.proj_out(x)
         return x + x_in
