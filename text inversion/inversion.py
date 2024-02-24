@@ -120,7 +120,7 @@ def sampling(args,cond,shape,uc,sampler,mask=None,x0=None):
         img=torch.randn(shape).to(device)
     iterator = tqdm(time_range, desc='DDIM Sampler', total=total_steps)
     for i, step in enumerate(iterator):
-        # if i<args.ddim_steps//2: #very important
+        # if i<args.ddim_steps//2: #在训练阶段需要进行注释，在后期的生成阶段则取消注释进行跳过。
         #     continue
 
         index = total_steps - i - 1
