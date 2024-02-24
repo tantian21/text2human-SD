@@ -58,30 +58,51 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def train_one_step(args,img,txt,mask,model):
-    # img=img.to(device)
-    # target = model.encode_first_stage(img)
-    # target = model.get_first_stage_encoding(target).detach()
-    #
-    # c = model.get_learned_conditioning(txt)
-    # t = torch.randint(0, 1000, (args.batch_size,), device=device).long().to(device)
-    # noise=torch.randn_like(target)
-    # noise = model.q_sample(target,t,noise=noise)
-    # model_output = model.apply_model(noise, t, c,c,c,c,c)
-    #
-    # target = noise
-    #
-    # loss_simple = model.get_loss(model_output, target, mean=False).mean([1, 2, 3])
-    # model.logvar = model.logvar.to(device)
-    # logvar_t = model.logvar[t].to(device)
-    # loss = loss_simple / torch.exp(logvar_t) + logvar_t
-    # loss = model.l_simple_weight * loss.mean()
-    # loss_vlb = model.get_loss(model_output, target, mean=False).mean(dim=(1, 2, 3))
-    # loss_vlb = (model.lvlb_weights[t] * loss_vlb).mean()
-    # loss += (model.original_elbo_weight * loss_vlb)
-    loss = model.training_step({'caption': txt, 'jpg': img, 'masks':mask},None)  # ddpm 344
+def train_one_step(args,imgs, tot_txt,masks,model,sampler):
+    imgs=imgs.to(device)
+
+
+    uc = model.get_learned_conditioning(args.batch_size * [""])
+
+    tot_c = model.get_learned_conditioning([tot_txt[0]])
+
+    timesteps = make_ddim_timesteps(ddim_discr_method="uniform", num_ddim_timesteps=args.ddim_steps,
+                                    num_ddpm_timesteps=model.num_timesteps, verbose=False)
+    time_range = np.flip(timesteps)
+    step=time_range[0]
+    index = args.ddim_steps - 1
+    ts = torch.full((args.batch_size,), step, device=device, dtype=torch.long)
+    s = torch.zeros([args.batch_size]).to(device)
+    img = torch.randn([args.batch_size, args.C, args.H // args.f, args.W // args.f], device=device)
+    cond=model.get_learned_conditioning(tot_txt)
+    out, _ = sampler.p_sample_ddim(img, cond, [cond, cond, cond], s, ts, index=index,
+                                       use_original_steps=False,
+                                       quantize_denoised=False, temperature=1.,
+                                       noise_dropout=0., score_corrector=None,
+                                       corrector_kwargs=None,
+                                       unconditional_guidance_scale=args.scale,
+                                       unconditional_conditioning=uc)
+
+    img = out.detach()
+    t = torch.randint(0, 1000, (args.batch_size,), device=device).long().to(device)
+
+    model_output = model.apply_model(img, t, tot_c,[tot_c,tot_c,tot_c],tot_c)
+
+    target = model.encode_first_stage(imgs)
+    target = model.get_first_stage_encoding(target).detach()
+
+    loss_simple = model.get_loss(model_output*masks, target*masks, mean=False).mean([1, 2, 3])
+    model.logvar = model.logvar.to(device)
+    logvar_t = model.logvar[t].to(device)
+    loss = loss_simple / torch.exp(logvar_t) + logvar_t
+    loss = model.l_simple_weight * loss.mean()
+    loss_vlb = model.get_loss(model_output, target, mean=False).mean(dim=(1, 2, 3))
+    loss_vlb = (model.lvlb_weights[t] * loss_vlb).mean()
+    loss += (model.original_elbo_weight * loss_vlb)
+
 
     return loss
+
 
 
 @torch.no_grad()
@@ -99,8 +120,8 @@ def sampling(args,cond,shape,uc,sampler,mask=None,x0=None):
         img=torch.randn(shape).to(device)
     iterator = tqdm(time_range, desc='DDIM Sampler', total=total_steps)
     for i, step in enumerate(iterator):
-        if i<args.ddim_steps//2: #very important
-            continue
+        # if i<args.ddim_steps//2: #very important
+        #     continue
 
         index = total_steps - i - 1
         ts = torch.full((b,), step, device=device, dtype=torch.long)
@@ -183,6 +204,7 @@ def train():
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
         print("saved",epoch)
         model.embedding_manager.save("./checkpoints/6/embeddings"+str(epoch)+".pt")
 
@@ -398,4 +420,4 @@ def save_clothing():
 
 
 if __name__ == '__main__':
-    test()
+    train()
